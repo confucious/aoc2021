@@ -109,7 +109,6 @@ func parse(input: String) -> [String:Node] {
 struct Candidate: Equatable, Hashable {
     var nodes: [Node]
     var eligibleNodes: Set<Node>
-    
     var smallNodesVisited: Array<Node> {
         nodes.filter { !$0.big }
     }
@@ -179,10 +178,10 @@ func crawl(map: [String:Node]) {
         lastCandidates = paths
         paths = paths.flatMap { $0.crawl2() }
     }
-    let displayPaths = paths.map { $0.display() }.sorted()
-    for path in displayPaths {
-        print(path)
-    }
+//    let displayPaths = paths.map { $0.display() }.sorted()
+//    for path in displayPaths {
+//        print(path)
+//    }
     
     print(paths.count)
 }
