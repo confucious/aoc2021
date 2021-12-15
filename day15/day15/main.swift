@@ -168,33 +168,39 @@ struct PathToPoint: Equatable & Hashable {
     
 
     var cost: Int
-    var path: [Point]
-    var endPoint: Point {
-        path.last!
-    }
+//    var path: [Point]
+    var endPoint: Point
     
-    func move(to direction: Direction, map: [[Int]]) -> PathToPoint? {
-        let newPoint = path.last!.point(to: direction)
-        guard let cost = safeLookup(col: newPoint.col, row: newPoint.row, data: map) else {
+    func move(to direction: Direction, map: [[Int]], bestPaths: [[PathToPoint]]) -> PathToPoint? {
+        let newPoint = endPoint.point(to: direction)
+        guard let newCost = safeLookup(col: newPoint.col, row: newPoint.row, data: map) else {
             return nil
         }
-        return PathToPoint(cost: self.cost + cost, path: path + [newPoint])
-    }
-    
-    func display() {
-        let width = path.map { $0.col }.max()!
-        let height = path.map { $0.row }.max()!
-        for row in 0 ... height {
-            for col in 0 ... width {
-                if path.contains(Point(col: col, row: row)) {
-                    print("#", terminator: "")
-                } else {
-                    print(" ", terminator: "")
-                }
-            }
-            print()
+        if self.cost + newCost < (bestPaths[newPoint.row][newPoint.col].cost) {
+            var copy = self
+            copy.cost += newCost
+//            copy.path.append(newPoint)
+            copy.endPoint = newPoint
+            return copy
+        } else {
+            return nil
         }
     }
+    
+//    func display() {
+//        let width = path.map { $0.col }.max()!
+//        let height = path.map { $0.row }.max()!
+//        for row in 0 ... height {
+//            for col in 0 ... width {
+//                if path.contains(Point(col: col, row: row)) {
+//                    print("#", terminator: "")
+//                } else {
+//                    print(" ", terminator: "")
+//                }
+//            }
+//            print()
+//        }
+//    }
 }
 
 func cloneMap(map: [[Int]]) -> [[Int]] {
@@ -216,54 +222,36 @@ func cloneMap(map: [[Int]]) -> [[Int]] {
 
 func search(map: [[Int]]) {
     let lastPoint = Point(col: map[0].count - 1, row: map.count - 1)
-    var bestPaths: [Point:PathToPoint] = [:]
-    bestPaths[Point(col: 0, row: 0)] = PathToPoint(cost: 0, path: [Point(col: 0, row: 0)])
-    var candidates = Set(bestPaths.values)
+    let height = map.count
+    let width = map[0].count
+    var bestPaths: [[PathToPoint]] = Array(repeating: Array(repeating: PathToPoint(cost: Int.max, endPoint: Point(col: 0, row: 0)), count: width), count: height)
+    bestPaths[0][0] = PathToPoint(cost: 0, endPoint: Point(col: 0, row: 0))
+    var candidates = Set([bestPaths[0][0]])
     while !candidates.isEmpty {
         var newCandidates = Set<PathToPoint>()
         for candidate in candidates {
             [Direction.north, .south, .east, .west].forEach {
-                guard let neighbor = candidate.move(to: $0, map: map) else {
+                guard let neighbor = candidate.move(to: $0, map: map, bestPaths: bestPaths) else {
                     return
                 }
                 let end = neighbor.endPoint
-                if bestPaths[end] == nil || (bestPaths[end]?.cost ?? Int.max) > neighbor.cost {
-                    bestPaths[end] = neighbor
+                if bestPaths[end.row][end.col].cost > neighbor.cost {
+                    bestPaths[end.row][end.col] = neighbor
                     newCandidates.remove(neighbor)
                     newCandidates.insert(neighbor)
                 }
             }
         }
         candidates = newCandidates
-        print(candidates.count)
+//        print(candidates.count)
     }
 //    bestPaths[lastPoint]!.display()
-    print(bestPaths[lastPoint]!.cost)
-}
-func search2(map: [[Int]]) {
-    let lastPoint = Point(col: map[0].count - 1, row: map.count - 1)
-    var bestPaths: [Point:PathToPoint] = [:]
-    bestPaths[Point(col: 0, row: 0)] = PathToPoint(cost: 0, path: [Point(col: 0, row: 0)])
-    while bestPaths[lastPoint] == nil {
-        let candidates = Array(bestPaths.values)
-        for candidate in candidates {
-            [Direction.north, .south, .east, .west].forEach {
-                guard let neighbor = candidate.move(to: $0, map: map) else {
-                    return
-                }
-                let end = neighbor.endPoint
-                if bestPaths[end] == nil || (bestPaths[end]?.cost ?? Int.max) > neighbor.cost {
-                    bestPaths[end] = neighbor
-                }
-            }
-        }
-        print(candidates.count)
-    }
-    //    bestPaths[lastPoint]!.display()
-    print(bestPaths[lastPoint]!.cost)
+    print(bestPaths[lastPoint.row][lastPoint.col].cost)
 }
 
 //search(map: parse(input: sample))
 //search(map: parse(input: data))
 //search(map: cloneMap(map: parse(input: sample)))
+print(Date())
 search(map: cloneMap(map: parse(input: data)))
+print(Date())
