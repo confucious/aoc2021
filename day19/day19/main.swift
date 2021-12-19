@@ -1292,6 +1292,7 @@ struct Scanner {
     
     var position = Point(x: 0, y: 0, z: 0)
     var orientation: Orientation = .allOrientations[0]
+    var normalizedPoints: Set<Point>
     
     func adjustedPoints() -> [Point] {
         return points.map { (point) in
@@ -1319,6 +1320,7 @@ struct Scanner {
                 let comps = $0.components(separatedBy: ",")
                 return Point(x: Int(comps[0])!, y: Int(comps[1])!, z: Int(comps[2])!)
             })
+        normalizedPoints = points
     }
     
 }
@@ -1346,6 +1348,7 @@ func hasCommonBeacons(points: Set<Point>, with other: Scanner) -> Scanner? {
                     var result = other
                     result.orientation = orientation
                     result.position = Point(x: dx, y: dy, z: dz)
+                    result.normalizedPoints = Set(result.adjustedPoints())
                     return result
                 }
             }
@@ -1354,74 +1357,88 @@ func hasCommonBeacons(points: Set<Point>, with other: Scanner) -> Scanner? {
     return nil
 }
 
-func findAllBeacons(input: String) {
+func findAllBeacons(input: String) -> (Set<Point>, [Scanner]){
     let scanners = parse(input: input)
     var knownBeacons = scanners[0].points
     var unmatchedScanners = scanners.dropFirst()
+    var placedScanners = [scanners[0]]
     while !unmatchedScanners.isEmpty {
         unmatchedScanners = unmatchedScanners.filter { scanner in
-            if let matchedScanner = hasCommonBeacons(points: knownBeacons, with: scanner) {
+            if let matchedScanner = hasCommonBeacons(
+                points: knownBeacons,
+                with: scanner) {
                 print("matched \(matchedScanner.name) \(matchedScanner.position)")
-                knownBeacons.formUnion(matchedScanner.adjustedPoints())
+                knownBeacons.formUnion(matchedScanner.normalizedPoints)
+                placedScanners.append(matchedScanner)
                 return false
             }
             return true
         }
     }
     print(knownBeacons.count)
+    return (knownBeacons, placedScanners)
+}
+
+func manhattan(points: [Point]) -> Int {
+    var maxVal = 0
+    for scanner in points {
+        for scannerb in points {
+            let dist = abs(scanner.x - scannerb.x) + abs(scanner.y - scannerb.y) + abs(scanner.z - scannerb.z)
+            maxVal = max(maxVal, dist)
+        }
+    }
+    print(maxVal)
+    return maxVal
 }
 
 //let scanners = parse(input: sample)
 //print(scanners[0].hasCommonBeacons(with: scanners[1])!.position)
 //print(scanners[1].hasCommonBeacons(with: scanners[4])!.position)
 //findAllBeacons(input: sample)
-//findAllBeacons(input: data)
+print(Date())
+let (_, scanners) = findAllBeacons(input: data)
+print(manhattan(points: scanners.map { $0.position }))
+print(Date())
 
-let scanners = [
-    Point(x: -161, y: -27, z: -1255),
-    Point(x: -1217, y: 84, z: -164),
-    Point(x: 1073, y: 116, z: -1282),
-    Point(x: -62, y: -1041, z: -158),
-    Point(x: 1151, y: -1207, z: -50),
-    Point(x: -153, y: -28, z: 1079),
-    Point(x: -128, y: 1223, z: -1233),
-    Point(x: 2416, y: 119, z: -1371),
-    Point(x: 2380, y: -1060, z: -1261),
-    Point(x: -1223, y: 1198, z: -168),
-    Point(x: -87, y: 39, z: -2421),
-    Point(x: -136, y: 1288, z: 1131),
-    Point(x: -78, y: 1197, z: -2568),
-    Point(x: -1172, y: -1188, z: -1244),
-    Point(x: -1322, y: 65, z: -2438),
-    Point(x: -14, y: -1099, z: -2429),
-    Point(x: -1291, y: 1361, z: -2440),
-    Point(x: -1307, y: -1070, z: -2457),
-    Point(x: -2392, y: 97, z: -2533),
-    Point(x: -14, y: -1069, z: -3784),
-    Point(x: -112, y: -2253, z: -2491),
-    Point(x: -1340, y: -1153, z: -3781),
-    Point(x: 1168, y: -1164, z: -3614),
-    Point(x: -37, y: -1183, z: -4924),
-    Point(x: 2, y: -2239, z: -4871),
-    Point(x: 1051, y: 79, z: -3767),
-    Point(x: -1217, y: -1202, z: -4928),
-    Point(x: -2372, y: -1078, z: -2397),
-    Point(x: -1331, y: -2263, z: -4980),
-    Point(x: 2241, y: -1171, z: -3739),
-    Point(x: 1124, y: 1277, z: -3616),
-    Point(x: -2499, y: -2399, z: -4977),
-    Point(x: -1240, y: -2335, z: -6023),
-    Point(x: 2389, y: 1338, z: -3708),
-    Point(x: -2421, y: -2343, z: -3660),
-    Point(x: -1304, y: -3455, z: -4933),
-    Point(x: 1043, y: 2369, z: -3730)
-]
 
-var maxVal = 0
-for scanner in scanners {
-    for scannerb in scanners {
-        let dist = abs(scanner.x - scannerb.x) + abs(scanner.y - scannerb.y) + abs(scanner.z - scannerb.z)
-        maxVal = max(maxVal, dist)
-    }
-}
-print(maxVal)
+
+//let scanners = [
+//    Point(x: -161, y: -27, z: -1255),
+//    Point(x: -1217, y: 84, z: -164),
+//    Point(x: 1073, y: 116, z: -1282),
+//    Point(x: -62, y: -1041, z: -158),
+//    Point(x: 1151, y: -1207, z: -50),
+//    Point(x: -153, y: -28, z: 1079),
+//    Point(x: -128, y: 1223, z: -1233),
+//    Point(x: 2416, y: 119, z: -1371),
+//    Point(x: 2380, y: -1060, z: -1261),
+//    Point(x: -1223, y: 1198, z: -168),
+//    Point(x: -87, y: 39, z: -2421),
+//    Point(x: -136, y: 1288, z: 1131),
+//    Point(x: -78, y: 1197, z: -2568),
+//    Point(x: -1172, y: -1188, z: -1244),
+//    Point(x: -1322, y: 65, z: -2438),
+//    Point(x: -14, y: -1099, z: -2429),
+//    Point(x: -1291, y: 1361, z: -2440),
+//    Point(x: -1307, y: -1070, z: -2457),
+//    Point(x: -2392, y: 97, z: -2533),
+//    Point(x: -14, y: -1069, z: -3784),
+//    Point(x: -112, y: -2253, z: -2491),
+//    Point(x: -1340, y: -1153, z: -3781),
+//    Point(x: 1168, y: -1164, z: -3614),
+//    Point(x: -37, y: -1183, z: -4924),
+//    Point(x: 2, y: -2239, z: -4871),
+//    Point(x: 1051, y: 79, z: -3767),
+//    Point(x: -1217, y: -1202, z: -4928),
+//    Point(x: -2372, y: -1078, z: -2397),
+//    Point(x: -1331, y: -2263, z: -4980),
+//    Point(x: 2241, y: -1171, z: -3739),
+//    Point(x: 1124, y: 1277, z: -3616),
+//    Point(x: -2499, y: -2399, z: -4977),
+//    Point(x: -1240, y: -2335, z: -6023),
+//    Point(x: 2389, y: 1338, z: -3708),
+//    Point(x: -2421, y: -2343, z: -3660),
+//    Point(x: -1304, y: -3455, z: -4933),
+//    Point(x: 1043, y: 2369, z: -3730)
+//]
+//
