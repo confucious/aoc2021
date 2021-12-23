@@ -24,7 +24,7 @@ struct Point: Equatable & Hashable {
     let col, row: Int
 }
 
-struct Walker: Equatable {
+struct Walker: Equatable & Hashable {
     enum WalkerType: String {
         case a = "A"
         case b = "B"
@@ -88,11 +88,12 @@ struct Walker: Equatable {
             }
         } else if position.row == 2 {
             // can always move into hall
+            distance += 1
         } else {
             guard map[Point(col: position.col, row: 2)] == .available else {
                 return nil
             }
-            distance += 1
+            distance += 2
         }
         return distance * type.movementCost
     }
@@ -148,7 +149,7 @@ struct Walker: Equatable {
     }
 }
 
-enum Element: Equatable, CustomDebugStringConvertible {
+enum Element: Equatable, Hashable, CustomDebugStringConvertible {
     case wall
     case available
     case empty
@@ -164,7 +165,7 @@ enum Element: Equatable, CustomDebugStringConvertible {
     }
 }
 
-struct State: Equatable {
+struct State: Equatable & Hashable {
     var map: [Point:Element]
     var walkers: [Walker] {
         map.values.compactMap { (element) in
@@ -257,11 +258,12 @@ struct State: Equatable {
 
 func solve(initial: State) {
     var solvedStates: [State] = []
-    var aliveStates = [initial]
+    var aliveStates = Set([initial])
     while !aliveStates.isEmpty {
-        aliveStates = aliveStates.flatMap { $0.nextStates() }
+        let nextStates = aliveStates.flatMap { $0.nextStates() }
 //        aliveStates.forEach { $0.display() }
-        solvedStates.append(contentsOf: aliveStates.filter { $0.allDone })
+        solvedStates.append(contentsOf: nextStates.filter { $0.allDone })
+        aliveStates = Set(nextStates.filter { !$0.allDone })
         print(solvedStates.count, aliveStates.count)
     }
     print(solvedStates.map { $0.totalCost }.sorted().first)
@@ -307,9 +309,17 @@ let finalMinus3 = """
   #########
 """
 
+let data = """
+#############
+#...........#
+###D#A#C#D###
+  #C#A#B#B#
+  #########
+"""
+
 //let initial = State(input: finalMinus3)
 //initial.display()
 //initial.nextStates().forEach { $0.display() }
 
-solve(initial: State(input: sample))
+solve(initial: State(input: data))
 
