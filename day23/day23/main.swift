@@ -20,6 +20,16 @@ let sample = """
   #########
 """
 
+let sample2 = """
+#############
+#...........#
+###B#C#B#D###
+  #D#C#B#A#
+  #D#B#A#C#
+  #A#D#C#A#
+  #########
+"""
+
 struct Point: Equatable & Hashable {
     let col, row: Int
 }
@@ -75,26 +85,21 @@ struct Walker: Equatable & Hashable {
         distance += abs(point.col - position.col)
 
         if position.row == 1 {
-            guard map[Point(col: point.col, row: 2)] == .available else {
+            guard (2...point.row).allSatisfy({
+                map[Point(col: point.col, row: $0)] == .available
+            }) else {
                 return nil
-            }
-            distance += 1
-
-            if point.row == 3 {
-                guard map[Point(col: point.col, row: 3)] == .available else {
-                    return nil
-                }
-                distance += 1
             }
         } else if position.row == 2 {
             // can always move into hall
-            distance += 1
         } else {
-            guard map[Point(col: position.col, row: 2)] == .available else {
+            guard (2..<position.row).allSatisfy({
+                map[Point(col: position.col, row: $0)] == .available
+            }) else {
                 return nil
             }
-            distance += 2
         }
+        distance += abs(point.row - position.row)
         return distance * type.movementCost
     }
     
@@ -124,19 +129,19 @@ struct Walker: Equatable & Hashable {
     }
     
     func validFinalState(globalState: State) -> [State] {
-        let finalPoint: Point
-        switch globalState.map[Point(col: type.targetColumn, row: 3)] {
-            case .available:
-                finalPoint = Point(col: type.targetColumn, row: 3)
-            case .walker(let walker):
-                if walker.type != type {
-                    // there's a walker there that needs to move out first.
-                    return []
-                } else {
-                    finalPoint = Point(col: type.targetColumn, row: 2)
-                }
-            default:
-                fatalError("should only be considering available or walker spaces")
+        var finalPoint: Point = Point(col: type.targetColumn, row: 2)
+        for row in [3,4,5] {
+            switch globalState.map[Point(col: type.targetColumn, row: row)] {
+                case .available:
+                    finalPoint = Point(col: type.targetColumn, row: row)
+                case .walker(let walker):
+                    if walker.type != type {
+                        // there's a walker there that needs to move out first.
+                        return []
+                    }
+                default:
+                    fatalError("should only be considering available or walker spaces \(type.targetColumn) \(row)")
+            }
         }
         
         if let cost = costOfPath(to: finalPoint, map: globalState.map) {
@@ -215,13 +220,45 @@ struct State: Equatable & Hashable {
                 var newWalker = walker
                 newWalker.state = .inHall
                 map[walker.position] = .walker(newWalker)
-            } else if walker.position.row == 3 && walker.position.col == walker.type.targetColumn {
+//            } else if walker.position.row == 3 && walker.position.col == walker.type.targetColumn {
+//                var newWalker = walker
+//                newWalker.state = .final
+//                map[walker.position] = .walker(newWalker)
+//            } else if walker.position.row == 2 && walker.position.col == walker.type.targetColumn {
+//                if case let .walker(otherWalker) = map[Point(col: walker.position.col, row: 3)],
+//                   otherWalker.type == walker.type {
+//                    var newWalker = walker
+//                    newWalker.state = .final
+//                    map[walker.position] = .walker(newWalker)
+//                }
+//            }
+            } else if walker.position.row == 5 && walker.position.col == walker.type.targetColumn {
                 var newWalker = walker
                 newWalker.state = .final
                 map[walker.position] = .walker(newWalker)
-            } else if walker.position.row == 2 && walker.position.col == walker.type.targetColumn {
-                if case let .walker(otherWalker) = map[Point(col: walker.position.col, row: 3)],
+            } else if walker.position.row == 4 && walker.position.col == walker.type.targetColumn {
+                if case let .walker(otherWalker) = map[Point(col: walker.position.col, row: 5)],
                    otherWalker.type == walker.type {
+                    var newWalker = walker
+                    newWalker.state = .final
+                    map[walker.position] = .walker(newWalker)
+                }
+            } else if walker.position.row == 3 && walker.position.col == walker.type.targetColumn {
+                if case let .walker(otherWalker1) = map[Point(col: walker.position.col, row: 5)],
+                   otherWalker1.type == walker.type,
+                   case let .walker(otherWalker2) = map[Point(col: walker.position.col, row: 4)],
+                   otherWalker2.type == walker.type {
+                    var newWalker = walker
+                    newWalker.state = .final
+                    map[walker.position] = .walker(newWalker)
+                }
+            } else if walker.position.row == 2 && walker.position.col == walker.type.targetColumn {
+                if case let .walker(otherWalker1) = map[Point(col: walker.position.col, row: 5)],
+                   otherWalker1.type == walker.type,
+                   case let .walker(otherWalker2) = map[Point(col: walker.position.col, row: 4)],
+                   otherWalker2.type == walker.type,
+                   case let .walker(otherWalker3) = map[Point(col: walker.position.col, row: 4)],
+                   otherWalker3.type == walker.type {
                     var newWalker = walker
                     newWalker.state = .final
                     map[walker.position] = .walker(newWalker)
@@ -246,7 +283,7 @@ struct State: Equatable & Hashable {
     
     func display() {
         print()
-        for row in 1...3 {
+        for row in 1...5 {
             for col in 1...11 {
                 print(map[Point(col: col, row: row)] ?? "", terminator: "")
             }
@@ -259,11 +296,13 @@ struct State: Equatable & Hashable {
 func solve(initial: State) {
     var solvedStates: [State] = []
     var aliveStates = Set([initial])
+//    var aliveStates = [initial]
     while !aliveStates.isEmpty {
         let nextStates = aliveStates.flatMap { $0.nextStates() }
-//        aliveStates.forEach { $0.display() }
+//        nextStates.forEach { $0.display() }
         solvedStates.append(contentsOf: nextStates.filter { $0.allDone })
         aliveStates = Set(nextStates.filter { !$0.allDone })
+//        aliveStates = nextStates.filter { !$0.allDone }
         print(solvedStates.count, aliveStates.count)
     }
     print(solvedStates.map { $0.totalCost }.sorted().first)
@@ -279,33 +318,41 @@ func solve(initial: State) {
 
 let lastStep = """
 #############
-#.........A.#
-###.#B#C#D###
+#..........D#
+###A#B#C#.###
+  #A#B#C#D#
+  #A#B#C#D#
   #A#B#C#D#
   #########
 """
 
 let finalMinus1 = """
 #############
-#.....D.D.A.#
+#.........AD#
 ###.#B#C#.###
-  #A#B#C#.#
+  #A#B#C#D#
+  #A#B#C#D#
+  #A#B#C#D#
   #########
 """
 
 let finalMinus2 = """
 #############
-#.....D.....#
-###.#B#C#D###
-  #A#B#C#A#
+#A..D.....AD#
+###.#B#C#.###
+  #.#B#C#.#
+  #A#B#C#D#
+  #A#B#C#D#
   #########
 """
 
 let finalMinus3 = """
 #############
-#.....D.D...#
+#AA.D.....AD#
 ###.#B#C#.###
-  #A#B#C#A#
+  #.#B#C#.#
+  #.#B#C#D#
+  #A#B#C#D#
   #########
 """
 
@@ -317,9 +364,19 @@ let data = """
   #########
 """
 
-//let initial = State(input: finalMinus3)
+let data2 = """
+#############
+#...........#
+###D#A#C#D###
+  #D#C#B#A#
+  #D#B#A#C#
+  #C#A#B#B#
+  #########
+"""
+
+//let initial = State(input: lastStep)
 //initial.display()
 //initial.nextStates().forEach { $0.display() }
 
-solve(initial: State(input: data))
+solve(initial: State(input: data2))
 
